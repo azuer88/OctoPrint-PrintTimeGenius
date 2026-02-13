@@ -301,7 +301,6 @@ class GeniusAnalysisQueue(GcodeAnalysisQueue):
         logger.info("Probably starting printing, aborting built-in analysis.")
         raise # Reraise it
       logger.info("Result: {}".format(results))
-      self._finished_callback(self._current, results)
     else:
       logger.info("Not running built-in analysis.")
     for analyzer in self._plugin._settings.get(["analyzers"]):
@@ -362,7 +361,6 @@ class GeniusAnalysisQueue(GcodeAnalysisQueue):
               new_results["dimensions"]["height"] += old_minZ - new_minZ
         results.update(new_results)
         logger.info("Merged result: {}".format(results))
-        self._finished_callback(self._current, results)
       except AnalysisAborted as e:
         logger.info("Probably started printing, aborting: '{}'".format(command))
         raise # Reraise it
@@ -573,11 +571,6 @@ class PrintTimeGeniusPlugin(octoprint.plugin.SettingsPlugin,
     for dest in all_files.keys():
       self.unmark_all_pending(dest, all_files[dest])
 
-    # TODO: https://github.com/foosel/OctoPrint/pull/2723 has been merged for almost 7 years, test if this monkey patch can be removed
-    self._file_manager.original_add_file = self._file_manager.add_file
-    def new_add_file(destination, path, file_object, links=None, allow_overwrite=False, printer_profile=None, analysis=None, display=None, *args, **kwargs):
-      return self._file_manager.original_add_file(destination, path, file_object, links=links, allow_overwrite=allow_overwrite, printer_profile=printer_profile, analysis=None, display=display, *args, **kwargs)
-    self._file_manager.add_file = new_add_file
     # Work around for broken rc2
     if pkg_resources.parse_version(octoprint._version.get_versions()['version']) == pkg_resources.parse_version("1.3.9rc2"):
       self._printer.old_on_comm = self._printer.on_comm_file_selected
