@@ -20,7 +20,6 @@ import sys
 import types
 import yaml
 import flask
-import pkg_resources
 import errno
 from threading import Timer
 from collections import defaultdict, abc
@@ -570,14 +569,6 @@ class PrintTimeGeniusPlugin(octoprint.plugin.SettingsPlugin,
     all_files = self._file_manager.list_files()
     for dest in all_files.keys():
       self.unmark_all_pending(dest, all_files[dest])
-
-    # Work around for broken rc2
-    if pkg_resources.parse_version(octoprint._version.get_versions()['version']) == pkg_resources.parse_version("1.3.9rc2"):
-      self._printer.old_on_comm = self._printer.on_comm_file_selected
-      def new_on_comm(self, *args, **kwargs):
-        self.old_on_comm(*args, **kwargs)
-        self._create_estimator()
-      self._printer.on_comm_file_selected = types.MethodType(new_on_comm, self._printer)
 
     # Get printer_config from printer_config.yaml
     printer_config_path = os.path.join(self.get_plugin_data_folder(),
