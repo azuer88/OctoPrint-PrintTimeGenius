@@ -10,7 +10,6 @@ from octoprint.filemanager.analysis import AnalysisAborted
 from flask_babel import gettext
 import logging
 import bisect
-from pkg_resources import parse_version
 import sarge
 import json
 import shlex
@@ -310,12 +309,7 @@ class GeniusAnalysisQueue(GcodeAnalysisQueue):
       logger.info("Running: {}".format(command))
       results_err = ""
       try:
-        if parse_version(sarge.__version__) >= parse_version('0.1.5'):
-          # Because in version 0.1.5 the name was changed in sarge.
-          async_kwarg = 'async_'
-        else:
-          async_kwarg = 'async'
-        sarge_job = sarge.capture_both(command, **{async_kwarg: True})
+        sarge_job = sarge.capture_both(command, async_=True)
         # Wait for sarge to begin
         while not sarge_job.processes or not sarge_job.processes[0]:
           time.sleep(0.5)
