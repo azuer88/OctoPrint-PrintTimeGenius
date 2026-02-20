@@ -1,1 +1,3 @@
-Release notes for version 2.4.2: This release includes various improvements and fixes. See the changelog for detailed changes.
+Release 2.4.2
+
+Release notes based on the contents of RELEASE_NOTES.md.
