@@ -10,7 +10,6 @@ from octoprint.filemanager.analysis import AnalysisAborted
 from flask_babel import gettext
 import logging
 import bisect
-from pkg_resources import parse_version
 import sarge
 import json
 import shlex
@@ -20,7 +19,6 @@ import sys
 import types
 import yaml
 import flask
-import pkg_resources
 import errno
 from threading import Timer
 from collections import defaultdict, abc
@@ -311,12 +309,7 @@ class GeniusAnalysisQueue(GcodeAnalysisQueue):
       logger.info("Running: {}".format(command))
       results_err = ""
       try:
-        if parse_version(sarge.__version__) >= parse_version('0.1.5'):
-          # Because in version 0.1.5 the name was changed in sarge.
-          async_kwarg = 'async_'
-        else:
-          async_kwarg = 'async'
-        sarge_job = sarge.capture_both(command, **{async_kwarg: True})
+        sarge_job = sarge.capture_both(command, async_=True)
         # Wait for sarge to begin
         while not sarge_job.processes or not sarge_job.processes[0]:
           time.sleep(0.5)
@@ -570,14 +563,6 @@ class PrintTimeGeniusPlugin(octoprint.plugin.SettingsPlugin,
     all_files = self._file_manager.list_files()
     for dest in all_files.keys():
       self.unmark_all_pending(dest, all_files[dest])
-
-    # Work around for broken rc2
-    if pkg_resources.parse_version(octoprint._version.get_versions()['version']) == pkg_resources.parse_version("1.3.9rc2"):
-      self._printer.old_on_comm = self._printer.on_comm_file_selected
-      def new_on_comm(self, *args, **kwargs):
-        self.old_on_comm(*args, **kwargs)
-        self._create_estimator()
-      self._printer.on_comm_file_selected = types.MethodType(new_on_comm, self._printer)
 
     # Get printer_config from printer_config.yaml
     printer_config_path = os.path.join(self.get_plugin_data_folder(),
