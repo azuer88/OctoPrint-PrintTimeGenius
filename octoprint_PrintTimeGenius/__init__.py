@@ -353,6 +353,15 @@ class GeniusAnalysisQueue(GcodeAnalysisQueue):
             if ("dimensions" in new_results and
                 "height" in new_results["dimensions"]):
               new_results["dimensions"]["height"] += old_minZ - new_minZ
+        # Don't overwrite existing non-null values with null from the analyzer.
+        # The ARM binary can output inf→null for printingArea/dimensions while
+        # the built-in OctoPrint analysis may have valid values.
+        for key in ("printingArea", "dimensions"):
+          if key in new_results and isinstance(new_results[key], dict):
+            new_results[key] = {k: v for k, v in new_results[key].items()
+                                if v is not None}
+            if not new_results[key]:
+              del new_results[key]
         results.update(new_results)
         logger.info("Merged result: {}".format(results))
       except AnalysisAborted as e:
