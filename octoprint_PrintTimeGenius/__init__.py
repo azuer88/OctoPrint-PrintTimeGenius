@@ -10,6 +10,7 @@ from octoprint.filemanager.analysis import AnalysisAborted
 from flask_babel import gettext
 import logging
 import bisect
+import re
 import sarge
 import json
 import shlex
@@ -374,6 +375,37 @@ class GeniusAnalysisQueue(GcodeAnalysisQueue):
       finally:
         if sarge_job:
           sarge_job.close()
+    # If dimensions are missing (e.g. aarch64 binary outputs inf→null which gets stripped),
+    # do a quick scan of the gcode to extract height from Z moves.
+    if "height" not in results.get("dimensions", {}):
+      try:
+        min_z = None
+        max_z = None
+        z_pattern = re.compile(r'^[Gg][01][\s,][^;\n]*[Zz]([\d.]+)', re.MULTILINE)
+        with open(self._current.absolute_path, 'r', errors='replace') as gcode_file:
+          for line in gcode_file:
+            m = z_pattern.match(line)
+            if m:
+              z = float(m.group(1))
+              if min_z is None or z < min_z:
+                min_z = z
+              if max_z is None or z > max_z:
+                max_z = z
+        if max_z is not None:
+          height = max_z - (min_z or 0)
+          dims = results.setdefault("dimensions", {})
+          dims["height"] = height
+          # width/depth default to 0 so OctoPrint's sprintf("%(width).2f × %(depth).2f × %(height).2f")
+          # doesn't receive undefined and throw a TypeError in the file list view.
+          dims.setdefault("width", 0)
+          dims.setdefault("depth", 0)
+          # Also populate printingArea.maxZ — the Dashboard frontend uses maxZ for height progress.
+          area = results.setdefault("printingArea", {})
+          area.setdefault("maxZ", max_z)
+          area.setdefault("minZ", min_z or 0)
+          logger.info("Extracted height from gcode Z moves: {}mm (minZ={}, maxZ={})".format(height, min_z, max_z))
+      except Exception as e:
+        logger.warning("Failed to extract height from gcode", exc_info=e)
     # Before we potentially modify the result from analysis, save them.
     results.update({'analysisPending': False})
     try:
